@@ -12,7 +12,7 @@ import { BarChart } from "@/components/charts/BarChart";
 import { DonutChart } from "@/components/charts/DonutChart";
 import { useEmi } from "@/lib/store";
 import { Transaction, TransactionType } from "@/lib/types";
-import { cn, formatCurrency, formatDate, moneySummary, monthKey, today, uid } from "@/lib/utils";
+import { cn, formatCurrency, formatDate, moneySummary, monthKey, searchMatches, today, uid } from "@/lib/utils";
 
 // Formulir kosong default untuk inisialisasi input transaksi baru
 const emptyForm = {
@@ -38,6 +38,7 @@ export function FinanceManager() {
   const [month, setMonth] = useState("all"); // Filter periode bulan aktif
   const [selectedCategoryTag, setSelectedCategoryTag] = useState("Semua"); // Filter cepat kategori via tag klik
   const [query, setQuery] = useState(""); // Query pencarian kata kunci
+  const searchTerm = query.trim();
 
   // Mengekstrak daftar bulan unik dari seluruh transaksi untuk opsi filter dropdown
   const months = useMemo(() => {
@@ -55,10 +56,19 @@ export function FinanceManager() {
     return state.transactions
       .filter(item => month === "all" || monthKey(item.date) === month)
       .filter(item => selectedCategoryTag === "Semua" || item.category === selectedCategoryTag)
-      .filter(item => {
-        const needle = query.toLowerCase();
-        return !needle || item.category.toLowerCase().includes(needle) || item.note.toLowerCase().includes(needle);
-      })
+      .filter(item =>
+        searchMatches(query, [
+          item.category,
+          item.note,
+          item.type,
+          item.type === "income" ? "pemasukan masuk income penjualan debit" : "pengeluaran keluar expense belanja kredit",
+          item.amount,
+          formatCurrency(item.amount),
+          item.date,
+          formatDate(item.date),
+          monthKey(item.date)
+        ])
+      )
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [state.transactions, month, selectedCategoryTag, query]);
 
@@ -100,7 +110,8 @@ export function FinanceManager() {
       type: form.type,
       category: form.category.trim(),
       amount: Number(form.amount),
-      note: form.note.trim()
+      note: form.note.trim(),
+      ownerId: state.session.userId
     };
     
     if (!payload.category || !payload.amount) return;
@@ -232,7 +243,14 @@ export function FinanceManager() {
     
     // Menulis berkas ke browser dan mengunduhnya
     XLSX.writeFile(wb, cleanFileName);
-    notify("Laporan Excel (.xlsx) berhasil diunduh");
+    update(draft => ({
+      ...draft,
+      exportLogs: [
+        { id: uid("export"), type: "finance_excel", fileName: cleanFileName, createdAt: today(), ownerId: draft.session.userId },
+        ...draft.exportLogs
+      ]
+    }));
+    notify("Laporan Excel (.xlsx) berhasil diunduh dan dicatat ke database");
   }
 
   // Menyiapkan data grafik batang historis bulanan (12 bulan)
@@ -406,18 +424,23 @@ export function FinanceManager() {
         <CardHeader className="flex flex-wrap items-center justify-between gap-4 p-6 border-b border-slate-100/60">
           <div>
             <h2 className="text-base font-black text-slate-900 tracking-tight">Riwayat Pembukuan Transaksi</h2>
-            <p className="text-xs font-semibold text-slate-400 mt-1">{filtered.length} baris pencatatan kas terdaftar.</p>
+            <p className="text-xs font-semibold text-slate-400 mt-1">{searchTerm ? `${filtered.length} hasil untuk "${searchTerm}".` : `${filtered.length} baris pencatatan kas terdaftar.`}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             {/* Input Pencarian Teks */}
             <div className="relative">
               <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
               <Input 
-                className="w-56 pl-9.5 min-h-[38px] rounded-xl text-xs font-bold border-slate-200/80 focus:border-teal-650" 
+                className="w-64 pl-9.5 pr-9 min-h-[38px] rounded-xl text-xs font-bold border-slate-200/80 focus:border-teal-650" 
                 value={query} 
                 onChange={event => setQuery(event.target.value)} 
-                placeholder="Cari kategori/catatan..." 
+                placeholder="Cari tanggal, nominal, jenis..." 
               />
+              {searchTerm ? (
+                <button type="button" aria-label="Bersihkan pencarian" onClick={() => setQuery("")} className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">
+                  <X size={13} />
+                </button>
+              ) : null}
             </div>
             {/* TOMBOL DOWNLOAD EXCEL - DESAIN PREMIUM SANGAT MENCOLOK */}
             <button 

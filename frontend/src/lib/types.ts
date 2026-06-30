@@ -4,18 +4,21 @@ export type TransactionType = "income" | "expense";
 // Status publikasi artikel: "Draft" (belum tayang) atau "Terbit" (tampil di publik).
 export type ArticleStatus = "Draft" | "Terbit";
 
-// Tipe obrolan di komunitas: "private" untuk chat japri, "group" untuk chat grup.
-export type ChatType = "private" | "group";
+// Status catatan report untuk tiap UMKM.
+export type ReportStatus = "Draft" | "Perlu Follow Up" | "Selesai";
+
+// Prioritas catatan report untuk membantu tindak lanjut.
+export type ReportPriority = "Rendah" | "Sedang" | "Tinggi";
 
 // Mode tema antarmuka: "dark" untuk tema gelap dan "light" untuk tema terang.
 export type ThemeMode = "dark" | "light";
 
 // Tipe data Pengguna (User) yang terdaftar di aplikasi.
 export type User = {
-  id: string;        // ID unik pengguna (diawali "user-")
+  id: string;        // ID unik pengguna
   name: string;      // Nama lengkap pengguna
   email: string;     // Email pengguna untuk autentikasi login
-  password: string;  // Kata sandi terenkripsi sederhana / teks biasa untuk demo
+  password: string;  // Dipakai hanya untuk mode demo lokal tanpa Supabase
 };
 
 // Tipe data Profil Bisnis/Usaha UMKM milik pengguna.
@@ -33,28 +36,30 @@ export type Profile = {
 
 // Tipe data Transaksi Keuangan (Arus Kas).
 export type Transaction = {
-  id: string;             // ID unik transaksi (diawali "trx-")
+  id: string;             // ID unik transaksi
   date: string;           // Tanggal transaksi (format YYYY-MM-DD)
   type: TransactionType;  // Jenis transaksi (pemasukan atau pengeluaran)
   category: string;       // Kategori transaksi (misal: Bahan Baku, Penjualan)
   amount: number;         // Nominal uang dalam Rupiah
   note: string;           // Catatan atau keterangan tambahan
+  ownerId?: string | null;
 };
 
 // Tipe data Stok Produk/Bahan Baku untuk visualisasi persediaan.
 export type StockItem = {
-  id: string;             // ID unik item stok (diawali "stock-")
+  id: string;             // ID unik item stok
   name: string;           // Nama produk atau bahan baku
   category: string;       // Kelompok stok (misal: Produk Jadi, Bahan Baku)
   quantity: number;       // Jumlah stok tersedia
   unit: string;           // Satuan stok (pcs, kg, botol, pack)
   reorderPoint: number;   // Batas minimum stok untuk penanda restock
   updatedAt: string;      // Tanggal stok terakhir diperbarui (YYYY-MM-DD)
+  ownerId?: string | null;
 };
 
 // Tipe data Artikel yang ditulis oleh pengguna untuk edukasi/promosi.
 export type Article = {
-  id: string;             // ID unik artikel (diawali "art-")
+  id: string;             // ID unik artikel
   slug: string;           // Slug URL artikel (URL-friendly dari judul)
   title: string;          // Judul utama artikel
   category: string;       // Kategori artikel (misal: Keuangan, Pengalaman)
@@ -70,7 +75,7 @@ export type Article = {
 
 // Tipe data Usaha Lain (UMKM Terdekat) untuk simulasi kolaborasi.
 export type Business = {
-  id: string;        // ID unik usaha lain (diawali "biz-")
+  id: string;        // ID unik usaha lain
   name: string;      // Nama usaha/toko lain
   category: string;  // Kategori usaha lain
   distance: number;  // Jarak usaha lain dari lokasi pengguna (dalam km)
@@ -80,28 +85,27 @@ export type Business = {
   ownerId?: string | null;
 };
 
-// Tipe data Target Obrolan (Kontak atau Grup) di halaman Komunitas.
-export type ChatTarget = {
-  id: string;        // ID unik ruang chat (diawali "chat-")
-  type: ChatType;    // Tipe chat (pribadi atau group)
-  name: string;      // Nama kontak atau nama grup obrolan
-  meta: string;      // Keterangan tambahan (misal: "Supplier kemasan", "128 anggota")
-  initials: string;  // Inisial 1-2 huruf untuk avatar visual
-  color: string;     // Kode warna hex latar belakang avatar
+// Tipe data catatan report yang dibuat untuk masing-masing UMKM.
+export type ReportNote = {
+  id: string;                 // ID unik catatan
+  businessId: string;         // ID UMKM tujuan catatan
+  title: string;              // Judul ringkas catatan
+  body: string;               // Isi detail report atau notes
+  status: ReportStatus;       // Status tindak lanjut catatan
+  priority: ReportPriority;   // Prioritas catatan
+  createdAt: string;          // Tanggal dibuat (YYYY-MM-DD)
+  updatedAt: string;          // Tanggal terakhir diperbarui (YYYY-MM-DD)
+  author: string;             // Nama pembuat catatan
   ownerId?: string | null;
-  joinCode?: string | null;
 };
 
-// Tipe data Pesan Obrolan di halaman Komunitas.
-export type ChatMessage = {
-  id: string;        // ID unik pesan (diawali "msg-")
-  targetId: string;  // ID chatTarget tujuan pesan dikirim
-  from: "me" | "them"; // Menandakan pengirim pesan (saya atau orang lain)
-  sender: string;    // Nama lengkap pengirim pesan
-  text: string;      // Isi teks pesan
-  time: string;      // Waktu kirim pesan (format HH:MM)
-  senderId?: string | null;
-  createdAt?: string | null;
+// Tipe log ekspor/download laporan dari workspace UMKM.
+export type ExportLog = {
+  id: string;
+  type: "finance_excel";
+  fileName: string;
+  createdAt: string;
+  ownerId?: string | null;
 };
 
 // Tipe data Sesi Login Pengguna saat ini.
@@ -110,16 +114,16 @@ export type Session = {
   userId: string | null;  // ID pengguna yang sedang login (null jika belum login)
 };
 
-// State Global Aplikasi (EmiState) yang mencakup seluruh database simulasi.
+// State Global Aplikasi (EmiState) yang mencakup seluruh database workspace UMKM.
 export type EmiState = {
   session: Session;             // Status sesi aktif
   theme: ThemeMode;             // Preferensi tema antarmuka
-  users: User[];                // Daftar seluruh akun pengguna terdaftar
+  users: User[];                // Daftar akun pada mode demo lokal / user aktif Supabase
   profile: Profile;             // Data profil bisnis pengguna yang sedang masuk
   transactions: Transaction[];   // Riwayat transaksi keuangan pengguna
   stocks: StockItem[];           // Daftar stok produk/bahan baku
-  articles: Article[];          // Daftar artikel di platform
-  businesses: Business[];       // Daftar pelaku UMKM terdekat
-  chatTargets: ChatTarget[];    // Daftar ruang chat di komunitas
-  chatMessages: ChatMessage[];  // Riwayat seluruh pesan obrolan
+  articles: Article[];          // Daftar artikel milik workspace aktif
+  businesses: Business[];       // Daftar pelaku UMKM yang dicatat workspace aktif
+  reportNotes: ReportNote[];    // Daftar catatan report per UMKM
+  exportLogs: ExportLog[];      // Riwayat ekspor/download laporan
 };

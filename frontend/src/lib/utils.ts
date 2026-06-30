@@ -9,14 +9,20 @@ export function cn(...classes: Array<string | false | null | undefined>) {
 }
 
 /**
- * Menghasilkan ID acak yang unik dengan awalan (prefix) tertentu.
- * Berguna untuk pembuatan ID lokal sementara (misal: trx-xxxx, art-xxxx).
+ * Menghasilkan ID acak UUID-valid.
+ * Supabase memakai kolom uuid, jadi fallback juga harus berbentuk UUID.
  */
 export function uid(prefix = "id") {
+  void prefix;
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
   }
-  return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 9999)}`;
+
+  return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, char => {
+    const random = Math.floor(Math.random() * 16);
+    const value = Number(char) ^ (random & (15 >> (Number(char) / 4)));
+    return value.toString(16);
+  });
 }
 
 /**
@@ -44,6 +50,23 @@ export function initials(name: string) {
     .map(part => part[0])
     .join("")
     .toUpperCase();
+}
+
+export function normalizeSearchText(value: unknown) {
+  return String(value ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+export function searchMatches(query: string, values: unknown[]) {
+  const tokens = normalizeSearchText(query).split(" ").filter(Boolean);
+  if (tokens.length === 0) return true;
+
+  const haystack = normalizeSearchText(values.join(" "));
+  return tokens.every(token => haystack.includes(token));
 }
 
 /**

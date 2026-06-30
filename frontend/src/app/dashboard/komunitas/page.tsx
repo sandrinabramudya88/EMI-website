@@ -1,5 +1,5 @@
-import { CommunityChat } from "@/features/community/CommunityChat";
+import { redirect } from "next/navigation";
 
 export default function CommunityPage() {
-  return <CommunityChat />;
+  redirect("/dashboard/report");
 }

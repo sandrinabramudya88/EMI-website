@@ -8,7 +8,7 @@ export const articleCovers = [
   "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80"
 ];
 
-// Data inisial default untuk demonstrasi aplikasi EMI UMKM
+// Data inisial default untuk preview aplikasi EMI UMKM
 export const defaultState: EmiState = {
   // Status sesi default (belum login)
   session: {
@@ -17,16 +17,9 @@ export const defaultState: EmiState = {
   },
   // Preferensi tema antarmuka default
   theme: "dark",
-  // Daftar akun demo terdaftar
-  users: [
-    {
-      id: "user-rina",
-      name: "Rina Dwi",
-      email: "rina@emi.test",
-      password: "admin123"
-    }
-  ],
-  // Data profil usaha default milik pengguna
+  // Akun dibuat melalui register/login, bukan kredensial demo bawaan.
+  users: [],
+  // Data profil usaha default untuk preview publik saat database belum aktif
   profile: {
     owner: "Rina Dwi",
     business: "Dapur Rempah Rina",
@@ -131,21 +124,53 @@ export const defaultState: EmiState = {
       image: "https://images.unsplash.com/photo-1500595046743-cd271d694d30?auto=format&fit=crop&w=900&q=80"
     }
   ],
-  // Daftar target chat (Kontak Pribadi & Grup Komunitas)
-  chatTargets: [
-    { id: "chat-sari", type: "private", name: "Sari Snack & Packaging", meta: "Supplier toples kemasan katering", initials: "SS", color: "#0ea5e9" },
-    { id: "chat-bayu", type: "private", name: "Bayu Kopi & Espresso", meta: "Partner barter promosi bulanan", initials: "BK", color: "#f59e0b" },
-    { id: "chat-mentor", type: "private", name: "Mentor Keuangan (Pak Budi)", meta: "Konsultan arus kas mikro UMKM", initials: "MK", color: "#10b981" },
-    { id: "chat-kuliner", type: "group", name: "Komunitas Kuliner Bandung Juara", meta: "128 Anggota Aktif", initials: "KB", color: "#ef4444" },
-    { id: "chat-digital", type: "group", name: "UMKM Digital Marketing Class", meta: "86 Anggota Belajar", initials: "UD", color: "#8b5cf6" },
-    { id: "chat-pasar", type: "group", name: "Info Bazar & Pasar Kreatif Jabar", meta: "214 Anggota Info", initials: "BP", color: "#06b6d4" }
+  // Daftar catatan report awal untuk masing-masing UMKM terdekat
+  reportNotes: [
+    {
+      id: "note-1",
+      businessId: "biz-1",
+      title: "Follow up paket reseller kopi literan",
+      body: "Kopi Sudut Braga membuka peluang paket reseller untuk menu minuman bundling. Perlu cek harga grosir, minimum order, dan jadwal pengiriman untuk area Bandung.",
+      status: "Perlu Follow Up",
+      priority: "Tinggi",
+      createdAt: "2026-05-20",
+      updatedAt: "2026-05-22",
+      author: "Rina Dwi"
+    },
+    {
+      id: "note-2",
+      businessId: "biz-1",
+      title: "Kualitas foto katalog sudah bagus",
+      body: "Foto produk mereka terang dan konsisten. Bisa jadi referensi format foto promo Dapur Rina untuk katalog WhatsApp Business bulan depan.",
+      status: "Selesai",
+      priority: "Rendah",
+      createdAt: "2026-05-18",
+      updatedAt: "2026-05-18",
+      author: "Rina Dwi"
+    },
+    {
+      id: "note-3",
+      businessId: "biz-2",
+      title: "Potensi seragam usaha untuk event bazar",
+      body: "Batik Lestari menawarkan diskon seragam usaha. Simpan untuk kebutuhan event bazar atau hampers korporat, terutama jika ada pesanan tim besar.",
+      status: "Draft",
+      priority: "Sedang",
+      createdAt: "2026-05-21",
+      updatedAt: "2026-05-21",
+      author: "Rina Dwi"
+    },
+    {
+      id: "note-4",
+      businessId: "biz-3",
+      title: "Cek pasokan sayur organik mingguan",
+      body: "Perlu tanyakan ketersediaan cabai rawit dan daun pisang untuk menu nasi bakar. Jika stabil, bisa dipakai sebagai supplier cadangan bahan segar.",
+      status: "Perlu Follow Up",
+      priority: "Sedang",
+      createdAt: "2026-05-19",
+      updatedAt: "2026-05-22",
+      author: "Rina Dwi"
+    }
   ],
-  // Riwayat pesan chat inisial
-  chatMessages: [
-    { id: "msg-1", targetId: "chat-sari", from: "them", sender: "Sari Snack & Packaging", text: "Halo Kak Rina, stok toples silinder 500 ml yang kemarin ditanyakan sudah restock lagi ya di gudang kami.", time: "09:12" },
-    { id: "msg-2", targetId: "chat-sari", from: "me", sender: "Rina Dwi", text: "Wah siap Kak! Saya pesan 150 pcs ya untuk pesanan katering akhir pekan ini. Tolong dikirim pakai kurir instan.", time: "09:18" },
-    { id: "msg-3", targetId: "chat-kuliner", from: "them", sender: "Nina Frozen", text: "Rekan-rekan kuliner, ada yang mendaftar stan di bazar dinas koperasi kecamatan pekan depan tidak?", time: "10:22" },
-    { id: "msg-4", targetId: "chat-kuliner", from: "me", sender: "Rina Dwi", text: "Saya ikut gabung Kak Nina. Rencananya nanti saya mau bawa menu nasi bakar rempah andalan Dapur Rina.", time: "10:31" },
-    { id: "msg-5", targetId: "chat-kuliner", from: "them", sender: "Admin Koperasi", text: "Link pendaftaran dan formulir kurasi produk bazar akan saya bagikan sore ini ya. Mohon disiapkan foto KTP dan SIUP.", time: "10:35" }
-  ]
+  // Riwayat download/ekspor laporan workspace
+  exportLogs: []
 };

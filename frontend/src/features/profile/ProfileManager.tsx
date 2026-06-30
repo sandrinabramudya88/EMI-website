@@ -1,13 +1,15 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { Save, Store, UserRound, Sparkles, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import { FormEvent, useMemo, useState } from "react";
+import { AlertCircle, ArrowRight, BookOpenText, ImagePlus, Save, Sparkles, Store, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { FieldLabel, Input, Textarea } from "@/components/ui/Field";
+import { ArticleManager } from "@/features/articles/ArticleManager";
 import { useEmi } from "@/lib/store";
-import { cn, initials } from "@/lib/utils";
+import { cn, formatDate, initials, sortNewestArticles } from "@/lib/utils";
 
 
 /**
@@ -17,6 +19,12 @@ import { cn, initials } from "@/lib/utils";
 export function ProfileManager() {
   const { state, update, currentUser, notify, resetDemo } = useEmi();
   const [profile, setProfile] = useState(state.profile);
+  const profileArticles = useMemo(() => {
+    const currentUserId = state.session.userId;
+    return sortNewestArticles(
+      state.articles.filter(article => !currentUserId || article.ownerId === currentUserId || typeof article.ownerId === "undefined")
+    ).slice(0, 3);
+  }, [state.articles, state.session.userId]);
 
   /**
    * Menyimpan pembaruan profil ke database lokal
@@ -32,7 +40,8 @@ export function ProfileManager() {
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
+    <div className="space-y-6">
+      <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
       {/* Kolom Kiri: Kartu Profil Bisnis Saat Ini */}
       <section className="space-y-4">
         <Card className="border-slate-200/40 bg-white/95 backdrop-blur-md overflow-hidden relative">
@@ -70,20 +79,20 @@ export function ProfileManager() {
               </div>
             </div>
 
-            {/* Tombol Khusus Reset Data Demo */}
+            {/* Tombol Reset Workspace */}
             <div className="pt-4 border-t border-slate-100/80">
               <Button 
                 variant="secondary" 
                 className="w-full text-xs font-bold hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 transition-colors min-h-[40px] rounded-xl" 
                 onClick={() => {
-                  if (confirm("Apakah Anda yakin ingin menyetel ulang seluruh database simulasi ke pengaturan bawaan? Seluruh data kas, chat, dan promosi baru akan terhapus.")) {
+                  if (confirm("Apakah Anda yakin ingin mengosongkan workspace ini? Seluruh data kas, report notes, artikel, dan promosi baru akan terhapus.")) {
                     resetDemo();
-                    notify("Seluruh database demo berhasil disetel ulang!");
+                    notify("Workspace berhasil dikosongkan!");
                     window.location.reload();
                   }
                 }}
               >
-                <AlertCircle size={15} /> Setel Ulang Data Demo
+                <AlertCircle size={15} /> Kosongkan Workspace
               </Button>
             </div>
           </CardBody>
@@ -95,7 +104,7 @@ export function ProfileManager() {
         <CardHeader className="flex items-center justify-between gap-3 p-6 border-b border-slate-100/60">
           <div>
             <h2 className="text-base font-black text-slate-900 tracking-tight">Profil Akun & Kemitraan</h2>
-            <p className="text-xs font-semibold text-slate-400 mt-1">Data dipakai untuk penulisan artikel, obrolan mitra, dan peta sekitar.</p>
+            <p className="text-xs font-semibold text-slate-400 mt-1">Data dipakai untuk penulisan artikel, report mitra, dan peta sekitar.</p>
           </div>
           <Badge tone="teal" className="px-2.5 py-0.5 rounded-md font-bold select-none"><Sparkles size={12} /> Editable</Badge>
         </CardHeader>
@@ -153,6 +162,56 @@ export function ProfileManager() {
           </form>
         </CardBody>
       </Card>
+      </div>
+
+      <section className="space-y-4">
+        <Card className="border-slate-200/40 bg-white/95 backdrop-blur-md">
+          <CardHeader className="flex flex-wrap items-center justify-between gap-4 p-6 border-b border-slate-100/60">
+            <div>
+              <h2 className="text-base font-black text-slate-900 tracking-tight">Artikel di Profil Usaha</h2>
+              <p className="text-xs font-semibold text-slate-400 mt-1">Artikel terbaru langsung muncul di profil usaha untuk akses cepat.</p>
+            </div>
+            <Link href="/dashboard/artikel" className="inline-flex min-h-[36px] items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-black text-slate-700 transition-colors hover:bg-slate-50">
+              <BookOpenText size={14} /> Buka Menu Artikel
+            </Link>
+          </CardHeader>
+
+          <CardBody className="p-6">
+            {profileArticles.length > 0 ? (
+              <div className="grid gap-4 md:grid-cols-3">
+                {profileArticles.map(article => (
+                  <div key={article.id} className="overflow-hidden rounded-2xl border border-slate-200/70 bg-slate-50/40">
+                    <img src={article.cover} alt={article.title} className="h-36 w-full object-cover" />
+                    <div className="space-y-3 p-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge tone={article.status === "Terbit" ? "teal" : "amber"} className="font-black text-[10px]">{article.status}</Badge>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">{formatDate(article.date)}</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        <h3 className="line-clamp-2 text-sm font-black leading-snug text-slate-900">{article.title}</h3>
+                        <p className="line-clamp-2 text-xs font-semibold leading-relaxed text-slate-500">{article.excerpt}</p>
+                      </div>
+                      <Link href={article.status === "Terbit" ? `/artikel/${article.slug}` : "/dashboard/artikel"} className="inline-flex items-center gap-1.5 text-xs font-black text-teal-700 hover:underline">
+                        {article.status === "Terbit" ? "Lihat Artikel Publik" : "Lanjutkan Draft"} <ArrowRight size={12} />
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex min-h-[190px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/40 p-6 text-center">
+                <div className="grid h-12 w-12 place-items-center rounded-2xl border border-teal-100 bg-teal-50 text-teal-700">
+                  <ImagePlus size={20} />
+                </div>
+                <h3 className="mt-4 text-sm font-black text-slate-900">Belum ada artikel profil</h3>
+                <p className="mt-1 max-w-md text-xs font-semibold leading-relaxed text-slate-500">Tulis artikel pertama dengan foto sampul. Setelah disimpan, artikel langsung tampil di area profil ini.</p>
+              </div>
+            )}
+          </CardBody>
+        </Card>
+
+        <ArticleManager />
+      </section>
     </div>
   );
 }

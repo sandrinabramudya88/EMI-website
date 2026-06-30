@@ -1,12 +1,22 @@
-# Backend
+# Backend / Database
 
-Folder ini berisi aset backend/database untuk EMI UMKM.
+Folder ini berisi migration Supabase untuk EMI UMKM.
 
 ## Isi Folder
 
 ```txt
 supabase/
-`-- migrations/   # SQL schema dan migration database Supabase
+`-- migrations/   # SQL schema, RLS policy, dan tabel workspace multiuser
 ```
 
-Jika memakai Supabase CLI, arahkan command ke folder `backend/supabase` atau pindahkan konteks kerja ke `backend` terlebih dahulu.
+Jalankan migration secara berurutan di Supabase SQL Editor atau Supabase CLI. Schema memakai `auth.users` dan Row Level Security agar setiap UMKM hanya bisa mengelola data miliknya sendiri.
+
+Tabel utama:
+
+- `profiles`
+- `transactions`
+- `stocks`
+- `articles`
+- `businesses`
+- `report_notes`
+- `export_logs`

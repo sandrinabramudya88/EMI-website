@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, BarChart3, BookOpen, MessageSquareText, Store, TrendingUp, Wallet, Zap } from "lucide-react";
+import { ArrowRight, BarChart3, BookOpen, ClipboardList, MessageCircle, Store, TrendingUp, Wallet, Zap } from "lucide-react";
 import { PublicHeader } from "@/components/layout/PublicHeader";
 import { useEmi } from "@/lib/store";
 import { cn, formatDate, sortNewestArticles } from "@/lib/utils";
@@ -9,10 +9,11 @@ import { cn, formatDate, sortNewestArticles } from "@/lib/utils";
 export function PublicHome() {
   const { state } = useEmi();
   const published = sortNewestArticles(state.articles.filter(a => a.status === "Terbit"));
+  const complaintWhatsappUrl = "https://wa.me/6282335198661?text=Halo%20EMI%20UMKM%2C%20saya%20ingin%20menyampaikan%20pengaduan.";
 
   const features = [
     { icon: BarChart3, color: "text-accent", bg: "bg-accent/10 border-accent/20", title: "Laporan Keuangan", desc: "Pantau kas harian, ekspor Excel, dan lihat visual omzet usaha." },
-    { icon: MessageSquareText, color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20", title: "Komunitas Bisnis", desc: "Kelola chat mitra, supplier, dan komunitas promosi dalam satu tempat." },
+    { icon: ClipboardList, color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20", title: "Report UMKM", desc: "Buat catatan follow up, evaluasi, dan laporan singkat untuk tiap UMKM." },
     { icon: Store, color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20", title: "Radar UMKM", desc: "Promosikan usaha lokal dan temukan peluang kolaborasi terdekat." },
   ];
 
@@ -37,7 +38,7 @@ export function PublicHome() {
                   Kelola bisnis Anda <span className="text-shimmer">lebih cerdas.</span>
                 </h1>
                 <p className="max-w-2xl text-sm font-medium leading-7 text-muted sm:text-lg">
-                  Satu workspace privat untuk pencatatan keuangan, obrolan komunitas UMKM, promosi toko, dan edukasi bisnis. Gratis dan langsung siap dipakai.
+                  Satu workspace privat untuk pencatatan keuangan, report UMKM, promosi toko, dan edukasi bisnis. Gratis dan langsung siap dipakai.
                 </p>
               </div>
 
@@ -48,12 +49,15 @@ export function PublicHome() {
                 <Link href="/login" className="inline-flex min-h-[50px] items-center justify-center gap-2 rounded-xl border border-[rgba(99,179,237,0.15)] px-7 text-sm font-bold text-ink transition-all duration-150 hover:border-[rgba(99,179,237,0.3)] hover:bg-surface-2">
                   Masuk ke Workspace
                 </Link>
+                <a href={complaintWhatsappUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-[50px] items-center justify-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-7 text-sm font-black text-emerald-300 transition-all duration-150 hover:border-emerald-400/40 hover:bg-emerald-500/15">
+                  <MessageCircle size={16} /> Layanan Pengaduan
+                </a>
               </div>
 
               <div className="grid max-w-xl grid-cols-3 gap-3 pt-2">
                 {[
                   { value: "100%", label: "Gratis" },
-                  { value: "Privat", label: "Data lokal" },
+                  { value: "Privat", label: "Data usaha" },
                   { value: "Instan", label: "Tanpa setup" },
                 ].map(s => (
                   <div key={s.label} className="rounded-2xl border border-[rgba(99,179,237,0.08)] bg-surface/[0.55] p-4">
@@ -162,6 +166,26 @@ export function PublicHome() {
             </div>
           </section>
         )}
+
+        <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:pb-20">
+          <div className="relative overflow-hidden rounded-[1.75rem] border border-emerald-400/15 bg-emerald-500/[0.06] p-6 sm:p-8">
+            <div className="absolute right-[-80px] top-[-120px] h-64 w-64 rounded-full bg-emerald-400/[0.12] blur-[80px]" />
+            <div className="relative z-10 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+              <div className="max-w-2xl">
+                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-300">
+                  <MessageCircle size={11} /> Layanan Pengaduan
+                </div>
+                <h2 className="text-2xl font-black tracking-tight text-ink sm:text-3xl">Butuh bantuan atau ingin menyampaikan keluhan?</h2>
+                <p className="mt-3 text-sm font-medium leading-7 text-muted">
+                  Tim EMI UMKM siap menerima masukan dan pengaduan Anda melalui WhatsApp di nomor +62 823-3519-8661.
+                </p>
+              </div>
+              <a href={complaintWhatsappUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-[50px] items-center justify-center gap-2 rounded-xl bg-emerald-400 px-7 text-sm font-black text-slate-950 transition-all duration-150 hover:bg-emerald-300">
+                Hubungi via WhatsApp <ArrowRight size={16} />
+              </a>
+            </div>
+          </div>
+        </section>
       </main>
 
       <footer className="border-t border-[rgba(99,179,237,0.06)] py-8 text-center text-xs font-medium text-dim">

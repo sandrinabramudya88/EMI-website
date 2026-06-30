@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import { Eye, Pencil, Plus, Search, Trash2, X, BookOpenText } from "lucide-react";
+import { Eye, ImagePlus, Loader2, Pencil, Plus, Search, Trash2, X, BookOpenText } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
@@ -10,7 +10,7 @@ import { Modal } from "@/components/ui/Modal";
 import { articleCovers } from "@/lib/mock-data";
 import { useEmi } from "@/lib/store";
 import { Article, ArticleStatus } from "@/lib/types";
-import { estimateReadMinutes, formatDate, slugify, sortNewestArticles, today, uid } from "@/lib/utils";
+import { estimateReadMinutes, formatDate, searchMatches, slugify, sortNewestArticles, today, uid } from "@/lib/utils";
 
 // Nilai awal default untuk formulir pembuatan artikel baru
 const emptyForm = {
@@ -18,7 +18,8 @@ const emptyForm = {
   category: "Pengalaman",
   status: "Draft" as ArticleStatus,
   excerpt: "",
-  body: ""
+  body: "",
+  cover: ""
 };
 
 /**
@@ -26,7 +27,7 @@ const emptyForm = {
  * dan materi edukasi bisnis oleh pelaku UMKM.
  */
 export function ArticleManager() {
-  const { state, update, notify } = useEmi();
+  const { state, update, notify, uploadImage } = useEmi();
   
   // State lokal editor, pratinjau, filter pencarian
   const [openEditor, setOpenEditor] = useState(false);
@@ -34,11 +35,26 @@ export function ArticleManager() {
   const [preview, setPreview] = useState<Article | null>(null);
   const [query, setQuery] = useState("");
   const [form, setForm] = useState(emptyForm);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const searchTerm = query.trim();
 
   // Memfilter dan mengurutkan daftar artikel dari yang terbaru
   const articles = useMemo(() => {
-    const needle = query.toLowerCase();
-    return sortNewestArticles(state.articles).filter(item => !needle || item.title.toLowerCase().includes(needle) || item.category.toLowerCase().includes(needle));
+    return sortNewestArticles(state.articles).filter(item =>
+      searchMatches(query, [
+        item.title,
+        item.category,
+        item.status,
+        item.excerpt,
+        item.body,
+        item.author,
+        item.date,
+        formatDate(item.date),
+        `${item.readMinutes} menit baca`
+      ])
+    );
   }, [state.articles, query]);
 
   /**
@@ -47,6 +63,8 @@ export function ArticleManager() {
   function newArticle() {
     setEditingId(null);
     setForm(emptyForm);
+    setCoverFile(null);
+    setCoverPreview(null);
     setOpenEditor(true);
   }
 
@@ -60,49 +78,91 @@ export function ArticleManager() {
       category: article.category,
       status: article.status,
       excerpt: article.excerpt,
-      body: article.body
+      body: article.body,
+      cover: article.cover
     });
+    setCoverFile(null);
+    setCoverPreview(null);
     setOpenEditor(true);
   }
 
+  function selectCoverFile(file: File | null) {
+    if (!file) {
+      setCoverFile(null);
+      setCoverPreview(null);
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      notify("File harus berupa gambar.");
+      return;
+    }
+
+    setCoverFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setCoverPreview(String(reader.result));
+    reader.readAsDataURL(file);
+  }
   /**
    * Menyimpan perubahan atau membuat artikel baru (Create / Update) ke global store
    */
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const payload = {
-      title: form.title.trim(),
-      category: form.category,
-      excerpt: form.excerpt.trim(),
-      body: form.body.trim(),
-      status: form.status,
-      slug: slugify(form.title),
-      readMinutes: estimateReadMinutes(form.body)
-    };
-    
-    if (!payload.title || !payload.excerpt || !payload.body) return;
+    setSaving(true);
 
-    update(draft => {
-      if (editingId) {
-        return {
-          ...draft,
-          articles: draft.articles.map(item => (item.id === editingId ? { ...item, ...payload } : item))
-        };
-      }
-      const article: Article = {
-        id: uid("art"),
-        ...payload,
-        author: draft.profile.owner,
-        date: today(),
-        cover: articleCovers[draft.articles.length % articleCovers.length]
+    try {
+      const existing = editingId ? state.articles.find(item => item.id === editingId) : null;
+      const articleId = editingId ?? uid("art");
+      let cover = form.cover.trim();
+
+      if (coverFile) cover = await uploadImage(coverFile, "articles");
+      if (!cover) cover = articleCovers[state.articles.length % articleCovers.length];
+
+      const title = form.title.trim();
+      const excerpt = form.excerpt.trim();
+      const body = form.body.trim();
+      if (!title || !excerpt || !body) return;
+
+      const baseSlug = slugify(title) || "artikel";
+      const payload = {
+        title,
+        category: form.category,
+        excerpt,
+        body,
+        status: form.status,
+        slug: existing?.slug ?? `${baseSlug}-${articleId.slice(0, 8)}`,
+        readMinutes: estimateReadMinutes(body),
+        cover
       };
-      return { ...draft, articles: [article, ...draft.articles] };
-    });
-    
-    notify(editingId ? "Artikel berhasil diperbarui" : "Artikel berhasil diterbitkan");
-    setOpenEditor(false);
-    setEditingId(null);
-    setForm(emptyForm);
+
+      update(draft => {
+        if (editingId) {
+          return {
+            ...draft,
+            articles: draft.articles.map(item => (item.id === editingId ? { ...item, ...payload, ownerId: item.ownerId ?? draft.session.userId } : item))
+          };
+        }
+        const article: Article = {
+          id: articleId,
+          ...payload,
+          author: draft.profile.owner,
+          date: today(),
+          ownerId: draft.session.userId
+        };
+        return { ...draft, articles: [article, ...draft.articles] };
+      });
+
+      notify(editingId ? "Artikel berhasil diperbarui" : "Artikel berhasil disimpan");
+      setOpenEditor(false);
+      setEditingId(null);
+      setCoverFile(null);
+      setCoverPreview(null);
+      setForm(emptyForm);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Gagal menyimpan artikel.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   /**
@@ -120,13 +180,20 @@ export function ArticleManager() {
         <CardHeader className="flex flex-wrap items-center justify-between gap-4 p-6">
           <div>
             <h2 className="text-base font-black text-slate-900 tracking-tight">Edukasi & Insight Bisnis</h2>
-            <p className="text-xs font-semibold text-slate-400 mt-1">Bagikan pengalaman sukses dan edukasi bagi komunitas.</p>
+            <p className="text-xs font-semibold text-slate-400 mt-1">
+              {searchTerm ? `${articles.length} hasil untuk "${searchTerm}".` : "Bagikan pengalaman sukses dan edukasi bagi komunitas."}
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             {/* Pencarian Teks */}
             <div className="relative">
               <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-              <Input className="w-56 pl-9.5 min-h-[38px] rounded-xl text-xs font-bold border-slate-200/80 focus:border-teal-650" value={query} onChange={event => setQuery(event.target.value)} placeholder="Cari artikel edukasi..." />
+              <Input className="w-64 pl-9.5 pr-9 min-h-[38px] rounded-xl text-xs font-bold border-slate-200/80 focus:border-teal-650" value={query} onChange={event => setQuery(event.target.value)} placeholder="Cari judul, isi, status, penulis..." />
+              {searchTerm ? (
+                <button type="button" aria-label="Bersihkan pencarian" onClick={() => setQuery("")} className="absolute right-2 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700">
+                  <X size={13} />
+                </button>
+              ) : null}
             </div>
             {/* Tombol Tulis Artikel */}
             <Button onClick={newArticle} className="min-h-[38px] rounded-xl text-xs font-black shadow-md shadow-teal-700/10 active:scale-95 transition-transform duration-100">
@@ -173,6 +240,16 @@ export function ArticleManager() {
             </CardBody>
           </Card>
         ))}
+        {articles.length === 0 ? (
+          <Card className="border-dashed border-slate-200/80 bg-white/80 md:col-span-2 xl:col-span-3">
+            <CardBody className="p-10 text-center">
+              <h3 className="text-sm font-black text-slate-800">Artikel tidak ditemukan</h3>
+              <p className="mt-2 text-xs font-semibold leading-relaxed text-slate-500">
+                {searchTerm ? `Tidak ada artikel yang cocok dengan "${searchTerm}".` : "Belum ada artikel yang tersimpan."}
+              </p>
+            </CardBody>
+          </Card>
+        ) : null}
       </section>
 
       {/* Editor Modal (Tulis / Edit Artikel) */}
@@ -195,6 +272,26 @@ export function ArticleManager() {
                 </Select>
               </FieldLabel>
             </div>
+            <FieldLabel label="Foto Sampul / Dokumentasi">
+              <div className="grid gap-3 sm:grid-cols-[128px_minmax(0,1fr)]">
+                <img
+                  src={coverPreview || form.cover || articleCovers[0]}
+                  alt="Pratinjau foto artikel"
+                  className="h-24 w-full rounded-xl border border-slate-200/80 object-cover sm:h-full"
+                />
+                <div className="flex flex-col justify-center gap-3">
+                  <label className="flex min-h-[42px] cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 text-xs font-black text-slate-600 transition-colors hover:border-teal-300 hover:bg-teal-50">
+                    <ImagePlus size={15} /> Unggah Foto
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={event => selectCoverFile(event.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                </div>
+              </div>
+            </FieldLabel>
             <FieldLabel label="Ringkasan Singkat (Excerpt)">
               <Textarea rows={2} value={form.excerpt} onChange={event => setForm({ ...form, excerpt: event.target.value })} required placeholder="Tuliskan rangkuman 1-2 kalimat untuk memancing minat pembaca di beranda utama..." className="rounded-xl border-slate-200/80 focus:border-teal-650 font-semibold" />
             </FieldLabel>
@@ -204,8 +301,9 @@ export function ArticleManager() {
             
             <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
               <Button type="button" variant="secondary" className="min-h-[38px] px-4 rounded-xl text-xs font-bold border-slate-200" onClick={() => setOpenEditor(false)}><X size={15} /> Batal</Button>
-              <Button type="submit" className="min-h-[38px] px-5 rounded-xl text-xs font-black shadow-md active:scale-95 transition-transform duration-100">
-                <BookOpenText size={15} /> Terbitkan Artikel
+              <Button type="submit" disabled={saving} className="min-h-[38px] px-5 rounded-xl text-xs font-black shadow-md active:scale-95 transition-transform duration-100">
+                {saving ? <Loader2 size={15} className="animate-spin" /> : <BookOpenText size={15} />}
+                {saving ? "Menyimpan..." : editingId ? "Simpan Perubahan" : "Simpan Artikel"}
               </Button>
             </div>
           </form>

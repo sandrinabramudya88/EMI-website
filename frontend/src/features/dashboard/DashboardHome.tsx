@@ -48,12 +48,15 @@ export function DashboardHome() {
   const latestTransactions = [...state.transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
   const latestArticles = sortNewestArticles(state.articles.filter(article => article.status === "Terbit")).slice(0, 2);
 
-  const labels = ["Apr", "Mei", "Jun", "Jul", "Agu", "Sep"];
-  const data = labels.map((_, index) => {
-    if (index === 0) return moneySummary(state.transactions.filter(item => monthKey(item.date) === "2026-04"));
-    if (index === 1) return moneySummary(state.transactions.filter(item => monthKey(item.date) === "2026-05"));
-    return { income: 0, expense: 0, balance: 0 };
+  const transactionMonths = Array.from(new Set(state.transactions.map(item => monthKey(item.date)))).sort();
+  const fallbackMonths = Array.from({ length: 6 }, (_, index) => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - (5 - index));
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
   });
+  const chartMonths = (transactionMonths.length ? transactionMonths : fallbackMonths).slice(-6);
+  const labels = chartMonths.map(key => new Intl.DateTimeFormat("id-ID", { month: "short" }).format(new Date(`${key}-01T00:00:00`)));
+  const data = chartMonths.map(key => moneySummary(state.transactions.filter(item => monthKey(item.date) === key)));
 
   return (
     <div className="space-y-6">

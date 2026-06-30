@@ -12,7 +12,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 // Definisi metadata untuk optimasi SEO aplikasi
 export const metadata: Metadata = {
   title: "EMI UMKM - Solusi Pintar Manajemen Usaha",
-  description: "Aplikasi pencatatan keuangan, obrolan komunitas, artikel bisnis, dan promosi usaha terdekat untuk pelaku UMKM Indonesia."
+  description: "Aplikasi pencatatan keuangan, report notes UMKM, artikel bisnis, dan promosi usaha terdekat untuk pelaku UMKM Indonesia."
 };
 
 /**

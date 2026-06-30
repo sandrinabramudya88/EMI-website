@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   BarChart3, BookOpenText, Home, LogOut, Menu,
-  MessageSquareText, Moon, Plus, Sprout, Store, Sun, UserRound, X
+  ClipboardList, Moon, Plus, Sprout, Store, Sun, UserRound, X
 } from "lucide-react";
 import { cn, initials } from "@/lib/utils";
 import { useEmi } from "@/lib/store";
@@ -13,25 +13,26 @@ import { useEmi } from "@/lib/store";
 const navItems = [
   { href: "/dashboard",            label: "Dashboard",    icon: Home },
   { href: "/dashboard/keuangan",   label: "Keuangan",     icon: BarChart3 },
-  { href: "/dashboard/komunitas",  label: "Komunitas",    icon: MessageSquareText },
+  { href: "/dashboard/report",     label: "Report UMKM",  icon: ClipboardList },
   { href: "/dashboard/artikel",    label: "Artikel",      icon: BookOpenText },
-  { href: "/dashboard/umkm",       label: "UMKM Radar",   icon: Store },
+  { href: "/dashboard/umkm",       label: "Dokumentasi",  icon: Store },
   { href: "/dashboard/profile",    label: "Profil",       icon: UserRound },
 ];
 
 const titles: Record<string, string> = {
   "/dashboard":           "Dashboard",
   "/dashboard/keuangan":  "Laporan Keuangan",
-  "/dashboard/komunitas": "Komunitas Chat",
+  "/dashboard/report":     "Report Catatan UMKM",
+  "/dashboard/komunitas": "Report Catatan UMKM",
   "/dashboard/artikel":   "Manajemen Artikel",
-  "/dashboard/umkm":      "UMKM Terdekat",
+  "/dashboard/umkm":      "Bagikan & Dokumentasi Usaha",
   "/dashboard/profile":   "Profil & Pengaturan",
 };
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { state, ready, currentUser, logout, setTheme } = useEmi();
+  const { state, ready, currentUser, logout, setTheme, usingDatabase, syncing } = useEmi();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -158,6 +159,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2">
+            <span className="hidden rounded-xl border border-[rgba(99,179,237,0.12)] px-3 py-2 text-[10px] font-black uppercase tracking-widest text-muted sm:inline-flex">
+              {usingDatabase ? (syncing ? "Menyimpan DB" : "Database Aktif") : "Mode Lokal"}
+            </span>
             <button
               type="button"
               onClick={() => setTheme(isDark ? "light" : "dark")}
