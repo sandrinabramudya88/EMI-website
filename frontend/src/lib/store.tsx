@@ -13,7 +13,7 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const LOCAL_IMAGE_MAX_SIDE = 1600;
 const LOCAL_IMAGE_QUALITY = 0.82;
 const SUPPORTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png"]);
-const DATABASE_REQUIRED_MESSAGE = "Database Supabase production belum aktif. Akun dan data UMKM tidak boleh disimpan lokal di website live.";
+const DATABASE_REQUIRED_MESSAGE = "Database Railway production belum aktif. Akun dan data UMKM tidak boleh disimpan lokal di website live.";
 
 type RegisterResult = { ok: boolean; message?: string };
 type UploadFolder = "articles" | "businesses";
@@ -56,6 +56,33 @@ function readState() {
 function canUseLocalFallback() {
   if (typeof window === "undefined") return false;
   return ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+}
+type RailwayApiResponse = {
+  ok: boolean;
+  state: EmiState;
+  message?: string;
+  authenticated?: boolean;
+};
+
+type RailwayApiError = Error & { status?: number };
+
+async function requestRailwayDatabase<T>(path: string, init?: RequestInit) {
+  const response = await fetch(`/api/workspace/${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {})
+    }
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(payload.message ?? "Database Railway belum siap.") as RailwayApiError;
+    error.status = response.status;
+    throw error;
+  }
+
+  return payload as T;
 }
 
 function writeLocalState(next: EmiState) {
@@ -133,6 +160,27 @@ export function EmiProvider({ children }: { children: React.ReactNode }) {
 
     async function boot() {
       if (!client) {
+        if (!canUseLocalFallback()) {
+          try {
+            const result = await requestRailwayDatabase<RailwayApiResponse>("session");
+            databaseUserIdRef.current = result.state.session.userId;
+            if (!cancelled) {
+              setUsingDatabase(true);
+              setState(result.state);
+              setReady(true);
+            }
+          } catch (err) {
+            console.error(err);
+            databaseUserIdRef.current = null;
+            if (!cancelled) {
+              setUsingDatabase(false);
+              setState({ ...cloneState(defaultState), session: { isLoggedIn: false, userId: null } });
+              setReady(true);
+            }
+          }
+          return;
+        }
+
         if (!cancelled) {
           setState(readState());
           setReady(true);
@@ -202,6 +250,29 @@ export function EmiProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  async function flushRailwaySave() {
+    if (saveQueueRef.current.saving) return;
+    saveQueueRef.current.saving = true;
+    setSyncing(true);
+
+    try {
+      while (saveQueueRef.current.next) {
+        const next = saveQueueRef.current.next;
+        saveQueueRef.current.next = null;
+        await requestRailwayDatabase("save", {
+          method: "POST",
+          body: JSON.stringify({ state: next })
+        });
+      }
+    } catch (error) {
+      console.error(error);
+      notify(error instanceof Error ? error.message : "Gagal sinkron ke database Railway.");
+    } finally {
+      saveQueueRef.current.saving = false;
+      setSyncing(false);
+      if (saveQueueRef.current.next) void flushRailwaySave();
+    }
+  }
   function persistSideEffects(next: EmiState) {
     const client = supabaseRef.current;
     const databaseUserId = databaseUserIdRef.current;
@@ -209,6 +280,12 @@ export function EmiProvider({ children }: { children: React.ReactNode }) {
     if (client && databaseUserId && next.session.isLoggedIn) {
       saveQueueRef.current.next = cloneState(next);
       void flushDatabaseSave(client, databaseUserId);
+      return;
+    }
+
+    if (!client && !canUseLocalFallback() && next.session.isLoggedIn) {
+      saveQueueRef.current.next = cloneState(next);
+      void flushRailwaySave();
       return;
     }
 
@@ -243,7 +320,21 @@ export function EmiProvider({ children }: { children: React.ReactNode }) {
       return true;
     }
 
-    if (!canUseLocalFallback()) throw new Error(DATABASE_REQUIRED_MESSAGE);
+    if (!canUseLocalFallback()) {
+      try {
+        const result = await requestRailwayDatabase<RailwayApiResponse>("login", {
+          method: "POST",
+          body: JSON.stringify({ email, password })
+        });
+        databaseUserIdRef.current = result.state.session.userId;
+        setUsingDatabase(true);
+        setState(result.state);
+        return true;
+      } catch (error) {
+        if ((error as RailwayApiError).status === 401) return false;
+        throw error;
+      }
+    }
 
     const user = state.users.find(item => item.email.toLowerCase() === email.toLowerCase() && item.password === password);
     if (!user) return false;
@@ -285,7 +376,18 @@ export function EmiProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (!canUseLocalFallback()) {
-      return { ok: false, message: DATABASE_REQUIRED_MESSAGE };
+      try {
+        const result = await requestRailwayDatabase<RailwayApiResponse>("register", {
+          method: "POST",
+          body: JSON.stringify({ name, email, password, businessName })
+        });
+        databaseUserIdRef.current = result.state.session.userId;
+        setUsingDatabase(true);
+        setState(result.state);
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, message: error instanceof Error ? error.message : DATABASE_REQUIRED_MESSAGE };
+      }
     }
 
     if (state.users.some(user => user.email.toLowerCase() === email.toLowerCase())) {
@@ -303,6 +405,12 @@ export function EmiProvider({ children }: { children: React.ReactNode }) {
     const client = supabaseRef.current;
     if (client) {
       await client.auth.signOut();
+      databaseUserIdRef.current = null;
+      setState({ ...cloneState(defaultState), session: { isLoggedIn: false, userId: null } });
+      return;
+    }
+    if (!canUseLocalFallback()) {
+      await requestRailwayDatabase("logout", { method: "POST" });
       databaseUserIdRef.current = null;
       setState({ ...cloneState(defaultState), session: { isLoggedIn: false, userId: null } });
       return;
