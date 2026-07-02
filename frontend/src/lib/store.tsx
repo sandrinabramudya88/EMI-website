@@ -13,6 +13,7 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const LOCAL_IMAGE_MAX_SIDE = 1600;
 const LOCAL_IMAGE_QUALITY = 0.82;
 const SUPPORTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png"]);
+const DATABASE_REQUIRED_MESSAGE = "Database Supabase production belum aktif. Akun dan data UMKM tidak boleh disimpan lokal di website live.";
 
 type RegisterResult = { ok: boolean; message?: string };
 type UploadFolder = "articles" | "businesses";
@@ -42,6 +43,7 @@ function cloneState(state: EmiState) {
 
 function readState() {
   if (typeof window === "undefined") return cloneState(defaultState);
+  if (!canUseLocalFallback()) return cloneState(defaultState);
   try {
     const saved = window.localStorage.getItem(STORAGE_KEY);
     if (!saved) return cloneState(defaultState);
@@ -51,8 +53,14 @@ function readState() {
   }
 }
 
+function canUseLocalFallback() {
+  if (typeof window === "undefined") return false;
+  return ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+}
+
 function writeLocalState(next: EmiState) {
   if (typeof window === "undefined") return;
+  if (!canUseLocalFallback()) return;
 
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
@@ -235,6 +243,8 @@ export function EmiProvider({ children }: { children: React.ReactNode }) {
       return true;
     }
 
+    if (!canUseLocalFallback()) throw new Error(DATABASE_REQUIRED_MESSAGE);
+
     const user = state.users.find(item => item.email.toLowerCase() === email.toLowerCase() && item.password === password);
     if (!user) return false;
     persist({ ...state, session: { isLoggedIn: true, userId: user.id } });
@@ -272,6 +282,10 @@ export function EmiProvider({ children }: { children: React.ReactNode }) {
       databaseUserIdRef.current = data.user.id;
       setState(next);
       return { ok: true };
+    }
+
+    if (!canUseLocalFallback()) {
+      return { ok: false, message: DATABASE_REQUIRED_MESSAGE };
     }
 
     if (state.users.some(user => user.email.toLowerCase() === email.toLowerCase())) {
