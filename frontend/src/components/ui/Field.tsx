@@ -3,9 +3,9 @@ import { cn } from "@/lib/utils";
 
 const base = "input-dark w-full rounded-xl px-4 text-sm min-h-[44px] font-medium";
 
-export function FieldLabel({ label, children }: { label: string; children: React.ReactNode }) {
+export function FieldLabel({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
   return (
-    <label className="block space-y-2">
+    <label className={cn("block space-y-2", className)}>
       <span className="block text-[10px] font-black uppercase tracking-widest text-muted">{label}</span>
       {children}
     </label>

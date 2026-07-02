@@ -47,15 +47,15 @@ export function AuthPanel({ mode }: { mode: "login" | "register" }) {
   }
 
   return (
-    <div className="min-h-screen bg-bg flex overflow-hidden">
+    <div className="min-h-screen bg-bg flex overflow-x-hidden overflow-y-auto">
       {/* LEFT - Decorative panel */}
       <div className="hidden lg:flex lg:w-[45%] relative flex-col items-start justify-between p-12 overflow-hidden">
         {/* Background layers */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#050a14] via-[#070e1c] to-[#060c16]" />
-        <div className="absolute inset-0 dot-bg opacity-60" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#050a14] via-[#070e1c] to-[#060c16]" />
+        <div className="pointer-events-none absolute inset-0 dot-bg opacity-60" />
         {/* Glow orbs */}
-        <div className="absolute top-1/4 left-1/3 h-80 w-80 rounded-full bg-accent/[0.08] blur-[80px]" />
-        <div className="absolute bottom-1/4 right-0 h-64 w-64 rounded-full bg-blue-500/[0.08] blur-[80px]" />
+        <div className="pointer-events-none absolute top-1/4 left-1/3 h-80 w-80 rounded-full bg-accent/[0.08] blur-[80px]" />
+        <div className="pointer-events-none absolute bottom-1/4 right-0 h-64 w-64 rounded-full bg-blue-500/[0.08] blur-[80px]" />
 
         {/* Logo */}
         <div className="relative z-10 flex items-center gap-3">
@@ -111,8 +111,8 @@ export function AuthPanel({ mode }: { mode: "login" | "register" }) {
       </div>
 
       {/* RIGHT - Form */}
-      <div className="flex-1 flex items-center justify-center p-6 relative">
-        <div className="absolute inset-0 grid-bg opacity-30" />
+      <div className="relative flex min-h-screen flex-1 items-center justify-center p-6 py-10">
+        <div className="pointer-events-none absolute inset-0 grid-bg opacity-30" />
         <div className="absolute top-0 right-0 h-96 w-96 rounded-full bg-accent/5 blur-[100px] pointer-events-none" />
 
         <div className="relative z-10 w-full max-w-[400px] space-y-6 animate-fade-up">
@@ -152,11 +152,10 @@ export function AuthPanel({ mode }: { mode: "login" | "register" }) {
                     className="min-h-[44px]"
                   />
                 </FieldLabel>
-                <FieldLabel label="Nama UMKM / Perusahaan">
+                <FieldLabel label="Nama UMKM / Perusahaan (Opsional)">
                   <Input
                     value={businessName}
                     onChange={e => setBusinessName(e.target.value)}
-                    required
                     placeholder="Contoh: Dapur Rempah Rina"
                     className="min-h-[44px]"
                   />

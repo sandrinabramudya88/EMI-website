@@ -9,6 +9,10 @@ import { blankWorkspaceState, ensureDatabaseProfile, loadDatabaseState, loadPubl
 
 // Kunci penyimpanan local storage untuk fallback lokal saat Supabase belum dikonfigurasi.
 const STORAGE_KEY = "emi-umkm-next-state-v2";
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const LOCAL_IMAGE_MAX_SIDE = 1600;
+const LOCAL_IMAGE_QUALITY = 0.82;
+const SUPPORTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png"]);
 
 type RegisterResult = { ok: boolean; message?: string };
 type UploadFolder = "articles" | "businesses";
@@ -48,18 +52,51 @@ function readState() {
 }
 
 function writeLocalState(next: EmiState) {
-  if (typeof window !== "undefined") {
+  if (typeof window === "undefined") return;
+
+  try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    throw new Error("Penyimpanan browser penuh. Pakai gambar lebih kecil atau aktifkan database Supabase.");
   }
 }
 
-function fileToDataUrl(file: File) {
+function readFileAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
     reader.onerror = () => reject(new Error("Gagal membaca file gambar."));
     reader.readAsDataURL(file);
   });
+}
+
+function loadImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Gagal memproses file gambar."));
+    image.src = src;
+  });
+}
+
+async function fileToLocalDataUrl(file: File) {
+  const rawDataUrl = await readFileAsDataUrl(file);
+  if (typeof document === "undefined") return rawDataUrl;
+
+  const image = await loadImage(rawDataUrl);
+  const scale = Math.min(1, LOCAL_IMAGE_MAX_SIDE / Math.max(image.naturalWidth, image.naturalHeight));
+  const width = Math.max(1, Math.round(image.naturalWidth * scale));
+  const height = Math.max(1, Math.round(image.naturalHeight * scale));
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  if (!context) return rawDataUrl;
+
+  canvas.width = width;
+  canvas.height = height;
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, width, height);
+  context.drawImage(image, 0, 0, width, height);
+  return canvas.toDataURL("image/jpeg", LOCAL_IMAGE_QUALITY);
 }
 
 function extensionFromFile(file: File) {
@@ -260,16 +297,16 @@ export function EmiProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function uploadImage(file: File, folder: UploadFolder) {
-    if (!file.type.startsWith("image/")) {
-      throw new Error("File harus berupa gambar.");
+    if (!SUPPORTED_IMAGE_TYPES.has(file.type)) {
+      throw new Error("Format gambar harus JPG, JPEG, atau PNG.");
     }
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > MAX_IMAGE_BYTES) {
       throw new Error("Ukuran foto maksimal 5 MB.");
     }
 
     const client = supabaseRef.current;
     const databaseUserId = databaseUserIdRef.current;
-    if (!client || !databaseUserId) return fileToDataUrl(file);
+    if (!client || !databaseUserId) return fileToLocalDataUrl(file);
 
     const extension = extensionFromFile(file);
     const path = `${databaseUserId}/${folder}/${uid("media")}.${extension}`;
@@ -279,7 +316,10 @@ export function EmiProvider({ children }: { children: React.ReactNode }) {
       upsert: false
     });
 
-    if (error) throw new Error(`Gagal unggah foto: ${error.message}`);
+    if (error) {
+      console.warn("Supabase Storage upload gagal, memakai fallback data URL.", error.message);
+      return fileToLocalDataUrl(file);
+    }
 
     const { data } = client.storage.from("emi-media").getPublicUrl(path);
     return data.publicUrl;

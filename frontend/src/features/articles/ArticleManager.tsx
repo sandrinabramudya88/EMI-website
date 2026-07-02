@@ -22,6 +22,9 @@ const emptyForm = {
   cover: ""
 };
 
+const ACCEPTED_IMAGE_TYPES = "image/jpeg,image/png";
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
 /**
  * Komponen ArticleManager memfasilitasi penulisan cerita, tips finansial,
  * dan materi edukasi bisnis oleh pelaku UMKM.
@@ -93,8 +96,12 @@ export function ArticleManager() {
       return;
     }
 
-    if (!file.type.startsWith("image/")) {
-      notify("File harus berupa gambar.");
+    if (!ACCEPTED_IMAGE_TYPES.split(",").includes(file.type)) {
+      notify("Format gambar harus JPG, JPEG, atau PNG.");
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      notify("Ukuran foto maksimal 5 MB.");
       return;
     }
 
@@ -254,54 +261,75 @@ export function ArticleManager() {
 
       {/* Editor Modal (Tulis / Edit Artikel) */}
       {openEditor ? (
-        <Modal title={editingId ? "Ubah Detail Artikel" : "Tulis Artikel Edukasi Baru"} onClose={() => setOpenEditor(false)}>
-          <form className="space-y-4" onSubmit={submit}>
-            <FieldLabel label="Judul Artikel">
-              <Input value={form.title} onChange={event => setForm({ ...form, title: event.target.value })} required placeholder="Misal: Strategi Mengatur Kas Bagi UMKM Kuliner Pemula" className="rounded-xl border-slate-200/80 focus:border-teal-650 font-bold" />
-            </FieldLabel>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FieldLabel label="Kategori Pembahasan">
-                <Select value={form.category} onChange={event => setForm({ ...form, category: event.target.value })} className="rounded-xl border-slate-200/80 focus:border-teal-650 font-semibold">
-                  {["Keuangan", "Pengalaman", "Promosi", "Operasional"].map(item => <option key={item}>{item}</option>)}
-                </Select>
-              </FieldLabel>
-              <FieldLabel label="Status Tayang Publik">
-                <Select value={form.status} onChange={event => setForm({ ...form, status: event.target.value as ArticleStatus })} className="rounded-xl border-slate-200/80 focus:border-teal-650 font-semibold">
-                  <option value="Draft">Draft (Simpan Privat)</option>
-                  <option value="Terbit">Terbit (Tampilkan ke Publik)</option>
-                </Select>
-              </FieldLabel>
-            </div>
-            <FieldLabel label="Foto Sampul / Dokumentasi">
-              <div className="grid gap-3 sm:grid-cols-[128px_minmax(0,1fr)]">
-                <img
-                  src={coverPreview || form.cover || articleCovers[0]}
-                  alt="Pratinjau foto artikel"
-                  className="h-24 w-full rounded-xl border border-slate-200/80 object-cover sm:h-full"
-                />
-                <div className="flex flex-col justify-center gap-3">
-                  <label className="flex min-h-[42px] cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 text-xs font-black text-slate-600 transition-colors hover:border-teal-300 hover:bg-teal-50">
-                    <ImagePlus size={15} /> Unggah Foto
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="sr-only"
-                      onChange={event => selectCoverFile(event.target.files?.[0] ?? null)}
-                    />
-                  </label>
+        <Modal title={editingId ? "Ubah Detail Artikel" : "Tulis Artikel Edukasi Baru"} onClose={() => setOpenEditor(false)} variant="editor">
+          <form className="flex h-full min-h-0 flex-col" onSubmit={submit}>
+            <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto pr-1 lg:grid-cols-[minmax(0,1fr)_360px]">
+              <section className="flex min-h-0 flex-col gap-4">
+                <FieldLabel label="Judul Artikel">
+                  <Input value={form.title} onChange={event => setForm({ ...form, title: event.target.value })} required placeholder="Misal: Strategi Mengatur Kas Bagi UMKM Kuliner Pemula" className="min-h-[48px] rounded-xl border-slate-200/80 focus:border-teal-650 font-bold" />
+                </FieldLabel>
+                <FieldLabel label="Konten / Isi Lengkap Artikel" className="flex min-h-[460px] flex-1 flex-col">
+                  <Textarea rows={18} value={form.body} onChange={event => setForm({ ...form, body: event.target.value })} required placeholder="Tuliskan isi cerita, trik bisnis, kisah sukses, atau taktik menaikkan penjualan usaha Anda di sini..." className="min-h-[460px] flex-1 rounded-xl border-slate-200/80 focus:border-teal-650 text-xs sm:text-sm font-semibold leading-relaxed resize-y" />
+                </FieldLabel>
+              </section>
+
+              <aside className="min-w-0 space-y-4 lg:sticky lg:top-0 lg:self-start">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+                  <FieldLabel label="Kategori Pembahasan">
+                    <Select value={form.category} onChange={event => setForm({ ...form, category: event.target.value })} className="min-h-[48px] rounded-xl border-slate-200/80 focus:border-teal-650 font-semibold">
+                      {["Keuangan", "Pengalaman", "Promosi", "Operasional"].map(item => <option key={item}>{item}</option>)}
+                    </Select>
+                  </FieldLabel>
+                  <FieldLabel label="Status Tayang Publik">
+                    <Select value={form.status} onChange={event => setForm({ ...form, status: event.target.value as ArticleStatus })} className="min-h-[48px] rounded-xl border-slate-200/80 focus:border-teal-650 font-semibold">
+                      <option value="Draft">Draft (Simpan Privat)</option>
+                      <option value="Terbit">Terbit (Tampilkan ke Publik)</option>
+                    </Select>
+                  </FieldLabel>
                 </div>
-              </div>
-            </FieldLabel>
-            <FieldLabel label="Ringkasan Singkat (Excerpt)">
-              <Textarea rows={2} value={form.excerpt} onChange={event => setForm({ ...form, excerpt: event.target.value })} required placeholder="Tuliskan rangkuman 1-2 kalimat untuk memancing minat pembaca di beranda utama..." className="rounded-xl border-slate-200/80 focus:border-teal-650 font-semibold" />
-            </FieldLabel>
-            <FieldLabel label="Konten / Isi Lengkap Artikel">
-              <Textarea rows={8} value={form.body} onChange={event => setForm({ ...form, body: event.target.value })} required placeholder="Tuliskan isi cerita, trik bisnis, kisah sukses, atau taktik menaikkan penjualan usaha Anda di sini..." className="rounded-xl border-slate-200/80 focus:border-teal-650 text-xs sm:text-sm font-semibold leading-relaxed" />
-            </FieldLabel>
-            
-            <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
-              <Button type="button" variant="secondary" className="min-h-[38px] px-4 rounded-xl text-xs font-bold border-slate-200" onClick={() => setOpenEditor(false)}><X size={15} /> Batal</Button>
-              <Button type="submit" disabled={saving} className="min-h-[38px] px-5 rounded-xl text-xs font-black shadow-md active:scale-95 transition-transform duration-100">
+                <FieldLabel label="Foto Sampul / Dokumentasi">
+                  <div className="space-y-3">
+                    <img
+                      src={coverPreview || form.cover || articleCovers[0]}
+                      alt="Pratinjau foto artikel"
+                      className="h-48 w-full rounded-xl border border-slate-200/80 object-cover"
+                    />
+                    <label className="flex min-h-[50px] cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 text-xs font-black text-slate-600 transition-colors hover:border-teal-300 hover:bg-teal-50">
+                      <ImagePlus size={15} /> Unggah Foto JPG / PNG
+                      <input
+                        type="file"
+                        accept={ACCEPTED_IMAGE_TYPES}
+                        className="sr-only"
+                        onChange={event => selectCoverFile(event.target.files?.[0] ?? null)}
+                      />
+                    </label>
+                    {coverFile ? (
+                      <div className="flex min-h-[36px] items-center justify-between gap-2 rounded-lg bg-teal-50 px-3 text-[11px] font-bold text-teal-850">
+                        <span className="truncate">{coverFile.name}</span>
+                        <button
+                          type="button"
+                          aria-label="Hapus foto terpilih"
+                          className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-teal-700 transition-colors hover:bg-teal-100"
+                          onClick={() => {
+                            setCoverFile(null);
+                            setCoverPreview(null);
+                          }}
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </FieldLabel>
+                <FieldLabel label="Ringkasan Singkat (Excerpt)">
+                  <Textarea rows={4} value={form.excerpt} onChange={event => setForm({ ...form, excerpt: event.target.value })} required placeholder="Tuliskan rangkuman 1-2 kalimat untuk memancing minat pembaca di beranda utama..." className="min-h-[128px] rounded-xl border-slate-200/80 focus:border-teal-650 font-semibold" />
+                </FieldLabel>
+              </aside>
+            </div>
+
+            <div className="-mx-5 -mb-5 mt-5 flex shrink-0 flex-wrap justify-end gap-3 border-t border-slate-100 bg-white/95 px-5 py-4 backdrop-blur-md sm:-mx-6 sm:-mb-6 sm:px-6">
+              <Button type="button" variant="secondary" className="min-h-[42px] px-4 rounded-xl text-xs font-bold border-slate-200" onClick={() => setOpenEditor(false)}><X size={15} /> Batal</Button>
+              <Button type="submit" disabled={saving} className="min-h-[42px] px-5 rounded-xl text-xs font-black shadow-md active:scale-95 transition-transform duration-100">
                 {saving ? <Loader2 size={15} className="animate-spin" /> : <BookOpenText size={15} />}
                 {saving ? "Menyimpan..." : editingId ? "Simpan Perubahan" : "Simpan Artikel"}
               </Button>

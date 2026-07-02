@@ -20,6 +20,9 @@ const emptyForm = {
   image: "https://images.unsplash.com/photo-1556745757-8d76bdb6984b?auto=format&fit=crop&w=900&q=80"
 };
 
+const ACCEPTED_IMAGE_TYPES = "image/jpeg,image/png";
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
 function whatsappUrl(phone: string, businessName: string) {
   const number = phone.replace(/\D/g, "").replace(/^0/, "62");
   const text = encodeURIComponent(`Halo ${businessName}, saya melihat promosi UMKM Anda di EMI.`);
@@ -65,8 +68,12 @@ export function BusinessManager() {
       return;
     }
 
-    if (!file.type.startsWith("image/")) {
-      notify("File harus berupa gambar.");
+    if (!ACCEPTED_IMAGE_TYPES.split(",").includes(file.type)) {
+      notify("Format gambar harus JPG, JPEG, atau PNG.");
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      notify("Ukuran foto maksimal 5 MB.");
       return;
     }
 
@@ -197,7 +204,7 @@ export function BusinessManager() {
                   <Input value={form.image} onChange={event => setForm({ ...form, image: event.target.value })} required placeholder="https://..." className="rounded-xl border-slate-200/80 focus:border-teal-650" />
                   <label className="flex min-h-[42px] cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 text-xs font-black text-slate-600 transition-colors hover:border-teal-300 hover:bg-teal-50">
                     <ImagePlus size={15} /> Unggah Foto
-                    <input type="file" accept="image/*" className="sr-only" onChange={event => selectImageFile(event.target.files?.[0] ?? null)} />
+                    <input type="file" accept={ACCEPTED_IMAGE_TYPES} className="sr-only" onChange={event => selectImageFile(event.target.files?.[0] ?? null)} />
                   </label>
                 </div>
               </div>
