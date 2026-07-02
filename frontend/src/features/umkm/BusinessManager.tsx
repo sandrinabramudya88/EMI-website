@@ -198,15 +198,37 @@ export function BusinessManager() {
               <Textarea rows={3} value={form.promo} onChange={event => setForm({ ...form, promo: event.target.value })} required placeholder="Ceritakan produk, promo, suasana toko, atau dokumentasi kegiatan usaha terbaru." className="rounded-xl border-slate-200/80 focus:border-teal-650" />
             </FieldLabel>
             <FieldLabel label="Tambah Gambar Dokumentasi Usaha">
-              <div className="grid gap-3 sm:grid-cols-[128px_minmax(0,1fr)]">
-                <img src={imagePreview || form.image} alt="Pratinjau foto UMKM" className="h-24 w-full rounded-xl border border-slate-200/80 object-cover sm:h-full" />
-                <div className="space-y-3">
-                  <Input value={form.image} onChange={event => setForm({ ...form, image: event.target.value })} required placeholder="https://..." className="rounded-xl border-slate-200/80 focus:border-teal-650" />
-                  <label className="flex min-h-[42px] cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 text-xs font-black text-slate-600 transition-colors hover:border-teal-300 hover:bg-teal-50">
-                    <ImagePlus size={15} /> Unggah Foto
-                    <input type="file" accept={ACCEPTED_IMAGE_TYPES} className="sr-only" onChange={event => selectImageFile(event.target.files?.[0] ?? null)} />
-                  </label>
-                </div>
+              <div className="space-y-3">
+                <img
+                  src={imagePreview || form.image}
+                  alt="Pratinjau foto UMKM"
+                  className="h-48 w-full rounded-xl border border-slate-200/80 object-cover"
+                />
+                <label className="flex min-h-[50px] cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 text-xs font-black text-slate-600 transition-colors hover:border-teal-300 hover:bg-teal-50">
+                  <ImagePlus size={15} /> Unggah Foto JPG / PNG
+                  <input
+                    type="file"
+                    accept={ACCEPTED_IMAGE_TYPES}
+                    className="sr-only"
+                    onChange={event => selectImageFile(event.target.files?.[0] ?? null)}
+                  />
+                </label>
+                {imageFile ? (
+                  <div className="flex min-h-[36px] items-center justify-between gap-2 rounded-lg bg-teal-50 px-3 text-[11px] font-bold text-teal-850">
+                    <span className="truncate">{imageFile.name}</span>
+                    <button
+                      type="button"
+                      aria-label="Hapus foto terpilih"
+                      className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-teal-700 transition-colors hover:bg-teal-100"
+                      onClick={() => {
+                        setImageFile(null);
+                        setImagePreview(null);
+                      }}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ) : null}
               </div>
             </FieldLabel>
             <Button className="w-full min-h-[46px] rounded-xl text-xs font-black shadow-md shadow-teal-700/10 active:scale-95 transition-transform duration-100" type="submit" disabled={saving}>
